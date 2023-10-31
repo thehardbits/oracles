@@ -1,0 +1,107 @@
+version: "2.4"
+services:
+  ingest:
+    image: iot-all:latest
+    build:
+      context: .
+      dockerfile: iot.Dockerfile
+    depends_on:
+      - s3
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./docker/settings/iot-ingest.toml:/opt/ingest/etc/settings.toml:ro
+    command: /opt/ingest/bin/ingest -c /opt/ingest/etc/settings.toml
+  config:
+    image: iot-all:latest
+    build:
+      context: .
+      dockerfile: iot.Dockerfile
+    depends_on:
+      - postgres
+    ports:
+      - "9081:9081"
+    volumes:
+      - ./docker/settings/iot-config.toml:/opt/iot-config/etc/settings.toml:ro
+      - ./docker/keypairs/test-config-keypair.bin:/opt/iot-config/etc/test-config-keypair.bin:ro
+    command: /opt/iot-config/bin/iot-config -c /opt/iot-config/etc/settings.toml
+  entropy:
+    image: iot-all:latest
+    build:
+      context: .
+      dockerfile: iot.Dockerfile
+    depends_on:
+      - s3
+    ports:
+      - "9082:9082"
+    volumes:
+      - ./docker/settings/poc-entropy.toml:/opt/poc-entropy/etc/settings.toml:ro
+    command: /opt/poc-entropy/bin/poc-entropy -c /opt/poc-entropy/etc/settings.toml
+  price:
+    image: iot-all:latest
+    build:
+      context: .
+      dockerfile: iot.Dockerfile
+    depends_on:
+      - s3
+    volumes:
+      - ./docker/settings/iot-price.toml:/opt/price/etc/settings.toml
+    command: /opt/price/bin/price -c /opt/price/etc/settings.toml
+  packet-verifier:
+    image: iot-all:latest
+    build:
+      context: .
+      dockerfile: iot.Dockerfile
+    depends_on:
+      - postgres
+      - s3
+    volumes:
+      - ./docker/settings/iot-packet-verifier.toml:/opt/iot-packet-verifier/etc/settings.toml:ro
+      - ./docker/keypairs/test-packet-verifier-keypair.bin:/opt/iot-packet-verifier/etc/test-packet-verifier-keypair.bin:ro
+    command: /opt/iot-packet-verifier/bin/iot-packet-verifier -c /opt/iot-packet-verifier/etc/settings.toml
+  verifier:
+    image: iot-all:latest
+    build:
+      context: .
+      dockerfile: iot.Dockerfile
+    depends_on:
+      - postgres
+      - s3
+    volumes:
+      - ./docker/settings/iot-verifier.toml:/opt/iot-verifier/etc/settings.toml:ro
+      - ./docker/keypairs/test-verifier-keypair.bin:/opt/iot-verifier/etc/test-verifier-keypair.bin:ro
+    command: /opt/iot-verifier/bin/iot-verifier -c /opt/iot-verifier/etc/settings.toml
+  reward-indexer:
+    image: iot-all:latest
+    build:
+      context: .
+      dockerfile: iot.Dockerfile
+    depends_on:
+      - postgres
+      - s3
+    volumes:
+      - ./docker/settings/iot-reward-index.toml:/opt/reward-index/etc/settings.toml:ro
+    command: /opt/reward-index/bin/reward-index -c /opt/reward-index/etc/settings.toml server
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      PGDATA: /data
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres:/docker-entrypoint-initdb.d
+      - db-data:/data
+  s3:
+    image: localstack/localstack:latest
+    environment:
+      SERVICES: s3
+      EAGER_SERVICE_LOADING: 1
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./docker/localstack:/etc/localstack/init/ready.d
+
+volumes:
+  db-data:

@@ -1,0 +1,17 @@
+log = "price=debug,file_store=info"
+cache = "/opt/price/data"
+source = "quicknode.url.com"
+interval = 60
+
+[cluster]
+name = "devnet"
+hnt_price_key = "ECtrQnxTXy6E22JG9WZtbvo6etdRnMfmUps4ueLwimHv"
+iot_price_key = "BdaswGxZj1tvsCWDWGB6mLwVxcTyuwi81uXgPJJBNZFa"
+
+[output]
+bucket = "iot-price"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[metrics]
+endpoint = "0.0.0.0:19000"

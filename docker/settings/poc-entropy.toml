@@ -1,0 +1,12 @@
+log = "poc_entropy=debug,file_store=info"
+source = "https://entropy.source.url"
+listen = "0.0.0.0:9082"
+cache = "/opt/poc-entropy/data"
+
+[output]
+bucket = "iot-entropy"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[metrics]
+endpoint = "0.0.0.0:19000"

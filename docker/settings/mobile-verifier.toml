@@ -1,0 +1,41 @@
+log = "mobile-verifier=debug,file_store=info"
+cache = "/opt/mobile-verifier/data"
+rewards = 24
+reward_offset_minutes = 30
+start_after = 0
+disable_discovery_loc_rewards_to_s3 = "false"
+
+[database]
+url = "postgres://postgres:postgres@postgres:5432/verifier_db"
+max_connections = 10
+
+[config_client]
+url = "http://config:9081/"
+signing_keypair = "14qpSqtrquCjKFARFXnGfW1QE3L6KG2YWEZMi8CvZ5Yorz85Rrc"
+config_pubkey = "13HzR2frS8r5b5j3JyTMjoaRVbiUn5m9Vu181C5JuodioVJNLk2"
+
+[ingest]
+bucket = "mobile-ingest"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[data_transfer_ingest]
+bucket = "mobile-packet-verifier"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[price_tracker]
+price_duration_minutes = 10
+
+[price_tracker.file_store]
+bucket = "mobile-price"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[output]
+bucket = "mobile-verifier"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[metrics]
+endpoint = "0.0.0.0:19000"

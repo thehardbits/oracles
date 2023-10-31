@@ -1,0 +1,34 @@
+log = "mobile_packet_verifier=debug,file_store=info,solana=info"
+cache = "/opt/mobile-packet-verifier/data"
+burn_period = 1
+enable_solana_integration = false
+start_after = 0
+
+[solana]
+rpc_url = "http://localhost:8899"
+burn_keypair = "/opt/mobile-packet-verifier/etc/burn.key"
+cluster = "devnet"
+dc_mint = "dcuc8Amr83Wz27ZkQ2K9NS6r8zRpf1J6cvArEBDZDmm"
+dnt_mint = "mb1eu7TzEc71KxDpsmsKoucSSuuoGLv1drys1oP2jh6"
+
+[config_client]
+url = "http://config:9081/"
+signing_keypair = "/opt/mobile-packet-verifier/etc/test-packet-verifier-keypair.bin"
+config_pubkey = "13HzR2frS8r5b5j3JyTMjoaRVbiUn5m9Vu181C5JuodioVJNLk2"
+
+[database]
+url = "postgres://postgres:postgres@postgres:5432/packet_verifier_db"
+max_connections = 10
+
+[ingest]
+bucket = "mobile-ingest"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[output]
+bucket = "mobile-packet-verifier"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[metrics]
+endpoint = "0.0.0.0:19000"

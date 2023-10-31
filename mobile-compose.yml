@@ -1,0 +1,95 @@
+version: "2.4"
+services:
+  ingest:
+    image: mobile-all:latest
+    build:
+      context: .
+      dockerfile: mobile.Dockerfile
+    depends_on:
+      - s3
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./docker/settings/mobile-ingest.toml:/opt/ingest/etc/settings.toml
+    command: /opt/ingest/bin/ingest -c /opt/ingest/etc/settings.toml
+  config:
+    image: mobile-all:latest
+    build:
+      context: .
+      dockerfile: mobile.Dockerfile
+    depends_on:
+      - postgres
+    ports:
+      - "9081:9081"
+    volumes:
+      - ./docker/settings/mobile-config.toml:/opt/mobile-config/etc/settings.toml
+      - ./docker/keypairs/test-config-keypair.bin:/opt/mobile-config/etc/test-config-keypair.bin:ro
+    command: /opt/mobile-config/bin/mobile-config -c /opt/mobile-config/etc/settings.toml
+  price:
+    image: mobile-all:latest
+    build:
+      context: .
+      dockerfile: mobile.Dockerfile
+    depends_on:
+      - s3
+    volumes:
+      - ./docker/settings/mobile-price.toml:/opt/price/etc/settings.toml
+    command: /opt/price/bin/price -c /opt/price/etc/settings.toml
+  packet-verifier:
+    image: mobile-all:latest
+    build:
+      context: .
+      dockerfile: mobile.Dockerfile
+    depends_on:
+      - postgres
+      - s3
+    volumes:
+      - ./docker/settings/mobile-packet-verifier.toml:/opt/mobile-packet-verifier/etc/settings.toml
+      - ./docker/keypairs/test-packet-verifier.bin:/opt/mobile-packet-verifier/etc/test-packet-verifier.bin:ro
+    command: /opt/mobile-packet-verifier/bin/mobile-packet-verifier -c /opt/mobile-packet-verifier/etc/settings.toml
+  verifier:
+    image: mobile-all:latest
+    build:
+      context: .
+      dockerfile: mobile.Dockerfile
+    depends_on:
+      - postgres
+      - s3
+    volumes:
+      - ./docker/settings/mobile-verifier.toml:/opt/mobile-verifier/etc/settings.toml
+      - ./docker/keypairs/test-verifier-keypair.bin:/opt/mobile-verifier/etc/test-verifier-keypair.bin:ro
+    command: /opt/mobile-verifier/bin/mobile-verifier -c /opt/mobile-verifier/etc/settings.toml
+  reward-indexer:
+    image: mobile-all:latest
+    build:
+      context: .
+      dockerfile: mobile.Dockerfile
+    depends_on:
+      - postgres
+      - s3
+    volumes:
+      - ./docker/settings/mobile-reward-index.toml:/opt/reward-index/etc/settings.toml
+    command: /opt/reward-index/bin/reward-index -c /opt/reward-index/etc/settings.toml
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      PGDATA: /data
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres:/docker-entrypoint-initdb.d
+      - db-data:/data
+  s3:
+    image: localstack/localstack:latest
+    environment:
+      SERVICES: s3
+      EAGER_SERVICE_LOADING: 1
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./docker/localstack:/etc/localstack/init/ready.d
+
+volumes:
+  db-data:

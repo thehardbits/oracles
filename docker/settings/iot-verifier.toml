@@ -1,0 +1,60 @@
+log = "denylist=info,iot_verifier=debug,file_store=info,density_scaler=info"
+cache = "/opt/iot-verifier/data"
+beacon_interval = 600
+ingestor_rollup_time = 300
+poc_loader_window_width = 300
+poc_loader_poll_time = 300
+loader_window_max_lookback_age = 3600
+base_stale_period = 3600
+rewards = 24
+beacon_max_retries = 60
+witness_max_retries = 5
+entropy_interval = 300
+packet_interval = 900
+
+[database]
+url = "postgres://postgres:postgres@postgres:5432/verifier_db"
+max_connections = 10
+
+[iot_config_client]
+url = "http://config:9081/"
+signing_keypair = "/opt/iot-verifier/etc/test-verifier-keypair.bin"
+config_pubkey = "13HzR2frS8r5b5j3JyTMjoaRVbiUn5m9Vu181C5JuodioVJNLk2"
+
+[denylist]
+trigger = 21600
+sign_keys = [
+  "1SbEYKju337P6aYsRd9DT2k4qgK5ZK62kXbSvnJgqeaxK3hqQrYURZjL",
+  "1SVQyj9xpBybhar4ESUMKuak8GCTDmrcNnUfhSYhRh4vUhsu9bXBR1rU",
+]
+
+[ingest]
+bucket = "iot-ingest"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[packet_ingest]
+bucket = "iot-packet-verifier"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[entropy]
+bucket = "iot-entropy"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[output]
+bucket = "iot-rewards"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[price_tracker]
+price_duration_minutes = 10
+
+[price_tracker.file_store]
+bucket = "iot-price"
+region = "us-east-1"
+endpoint = "http://s3:4566"
+
+[metrics]
+endpoint = "0.0.0.0:19000"
