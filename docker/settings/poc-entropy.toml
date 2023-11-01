@@ -1,5 +1,5 @@
 log = "poc_entropy=debug,file_store=info"
-source = "https://entropy.source.url"
+source = "https://api.mainnet-beta.solana.com"
 listen = "0.0.0.0:9082"
 cache = "/opt/poc-entropy/data"
 

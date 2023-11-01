@@ -1,12 +1,14 @@
 log = "price=debug,file_store=info"
 cache = "/opt/price/data"
-source = "quicknode.url.com"
+source = "https://api.mainnet-beta.solana.com"
 interval = 60
 
 [cluster]
 name = "devnet"
-hnt_price_key = "ECtrQnxTXy6E22JG9WZtbvo6etdRnMfmUps4ueLwimHv"
-mobile_price_key = "CkCLWNUhhtWPKid69qJaw3MY9Tr2XD9vAUiqUroQHkZJ"
+hnt_price = 20
+mobile_price = 10
+# hnt_price_key = "ECtrQnxTXy6E22JG9WZtbvo6etdRnMfmUps4ueLwimHv"
+# mobile_price_key = "CkCLWNUhhtWPKid69qJaw3MY9Tr2XD9vAUiqUroQHkZJ"
 
 [output]
 bucket = "mobile-price"
