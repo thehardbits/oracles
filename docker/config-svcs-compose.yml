@@ -3,9 +3,6 @@ services:
 
   mobile-config:
     image: mobile-config:latest
-    build:
-      context: .
-      dockerfile: mobile_config.Dockerfile
     depends_on:
       - postgres
     ports:
@@ -17,17 +14,14 @@ services:
       CFG__METADATA__MAX_CONNECTIONS: 50
       CFG__LISTEN: 0.0.0.0:8090
       CFG__METRICS__ENDPOINT: 0.0.0.0:19010
-      CFG__ADMIN_PUBKEY: ${CONFIG_ADMIN_PUBKEY}
+      CFG__ADMIN_PUBKEY: 141jjqmhrBAE3qtR3ggFwAVcd5StGDRpP6dRRFgsXC7rV32Kngt
       CFG__SIGNING_KEYPAIR: /config-signing-key.bin
       CFG__LOG: debug
     volumes:
-      - ${CONFIG_SIGNING_KEY}:/config-signing-key.bin:ro
+      - ./keypairs/test-config-keypair.bin:/config-signing-key.bin:ro
 
   iot-config:
     image: iot-config:latest
-    build:
-      context: .
-      dockerfile: iot_config.Dockerfile
     depends_on:
       - postgres
     ports:
@@ -39,11 +33,11 @@ services:
       CFG__METADATA__MAX_CONNECTIONS: 50
       CFG__LISTEN: 0.0.0.0:8080
       CFG__METRICS__ENDPOINT: 0.0.0.0:19000
-      CFG__ADMIN: ${CONFIG_ADMIN_PUBKEY}
+      CFG__ADMIN: 141jjqmhrBAE3qtR3ggFwAVcd5StGDRpP6dRRFgsXC7rV32Kngt
       CFG__KEYPAIR: /config-signing-key.bin
       CFG__LOG: info
     volumes:
-      - ${CONFIG_SIGNING_KEY}:/config-signing-key.bin:ro
+      - ./keypairs/test-config-keypair.bin:/config-signing-key.bin:ro
 
   postgres:
     image: postgres:latest
@@ -53,14 +47,8 @@ services:
       POSTGRES_DBS: >
         iot_config_db
         iot_metadata_db
-        mobile_index_db
-        iot_index_db
-        mobile_verifier_db
-        iot_verifier_db
         mobile_config_db
         mobile_metadata_db
-        iot_packet_verifier_db
-        mobile_packet_verifier_db
       PGDATA: /data
     ports:
       - "5432:5432"

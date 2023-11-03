@@ -17,7 +17,7 @@ signing_keypair = "/opt/mobile-packet-verifier/etc/test-packet-verifier-keypair.
 config_pubkey = "13HzR2frS8r5b5j3JyTMjoaRVbiUn5m9Vu181C5JuodioVJNLk2"
 
 [database]
-url = "postgres://postgres:postgres@postgres:5432/packet_verifier_db"
+url = "postgres://postgres:postgres@postgres:5432/mobile_packet_verifier_db"
 max_connections = 10
 
 [ingest]

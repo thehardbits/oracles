@@ -4,7 +4,7 @@ mode = "mobile"
 start_after = 0
 
 [database]
-url = "postgres://postgres:postgres@postgres:5432/index_db"
+url = "postgres://postgres:postgres@postgres:5432/mobile_index_db"
 max_connections = 10
 
 [verifier]

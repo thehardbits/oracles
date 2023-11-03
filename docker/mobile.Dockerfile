@@ -65,7 +65,7 @@ COPY mobile_verifier ./mobile_verifier/
 RUN cargo build --package mobile-verifier --release
 
 # Wrap it all up with a bow
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 COPY --from=builder-ingest ./target/release/ingest /opt/ingest/bin/ingest
 COPY --from=builder-config ./target/release/mobile-config /opt/mobile-config/bin/mobile-config

@@ -6,7 +6,7 @@ start_after = 0
 disable_discovery_loc_rewards_to_s3 = "false"
 
 [database]
-url = "postgres://postgres:postgres@postgres:5432/verifier_db"
+url = "postgres://postgres:postgres@postgres:5432/mobile_verifier_db"
 max_connections = 10
 
 [config_client]

@@ -4,11 +4,11 @@ admin_pubkey = "141jjqmhrBAE3qtR3ggFwAVcd5StGDRpP6dRRFgsXC7rV32Kngt"
 signing_keypair = "/opt/mobile-config/etc/test-config-keypair.bin"
 
 [database]
-url = "postgres://postgres:postgres@postgres:5432/config_db"
+url = "postgres://postgres:postgres@postgres:5432/mobile_config_db"
 max_connections = 10
 
 [metadata]
-url = "postgres://postgres:postgres@postgres:5432/metadata_db"
+url = "postgres://postgres:postgres@postgres:5432/mobile_metadata_db"
 max_connections = 10
 
 [metrics]

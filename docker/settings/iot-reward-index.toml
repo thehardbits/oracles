@@ -5,7 +5,7 @@ operation_fund_key = "iot_operations_fund"
 start_after = 0
 
 [database]
-url = "postgres://postgres:postgres@postgres:5432/index_db"
+url = "postgres://postgres:postgres@postgres:5432/iot_index_db"
 max_connections = 10
 
 [verifier]

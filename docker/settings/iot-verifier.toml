@@ -13,7 +13,7 @@ entropy_interval = 300
 packet_interval = 900
 
 [database]
-url = "postgres://postgres:postgres@postgres:5432/verifier_db"
+url = "postgres://postgres:postgres@postgres:5432/iot_verifier_db"
 max_connections = 10
 
 [iot_config_client]

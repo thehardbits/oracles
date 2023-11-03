@@ -71,7 +71,7 @@ COPY iot_verifier ./iot_verifier/
 RUN cargo build --package iot-verifier --release
 
 # Wrap it all up with a bow
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 COPY --from=builder-ingest ./target/release/ingest /opt/ingest/bin/ingest
 COPY --from=builder-entropy ./target/release/poc-entropy /opt/poc-entropy/bin/poc-entropy

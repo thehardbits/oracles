@@ -1,0 +1,116 @@
+version: "2.4"
+services:
+  ingest:
+    image: iot-all:latest
+    depends_on:
+      - s3
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./settings/iot-ingest.toml:/opt/ingest/etc/settings.toml:ro
+    command: /opt/ingest/bin/ingest -c /opt/ingest/etc/settings.toml server
+  config:
+    image: iot-all:latest
+    depends_on:
+      - db-seeder
+    ports:
+      - "9081:9081"
+    volumes:
+      - ./settings/iot-config.toml:/opt/iot-config/etc/settings.toml:ro
+      - ./keypairs/test-config-keypair.bin:/opt/iot-config/etc/test-config-keypair.bin:ro
+    command: /opt/iot-config/bin/iot-config -c /opt/iot-config/etc/settings.toml server
+  entropy:
+    image: iot-all:latest
+    depends_on:
+      - s3
+    ports:
+      - "9082:9082"
+    volumes:
+      - ./settings/poc-entropy.toml:/opt/poc-entropy/etc/settings.toml:ro
+    command: /opt/poc-entropy/bin/poc-entropy -c /opt/poc-entropy/etc/settings.toml server
+  price:
+    image: iot-all:latest
+    depends_on:
+      - s3
+    volumes:
+      - ./settings/iot-price.toml:/opt/price/etc/settings.toml
+    command: /opt/price/bin/price -c /opt/price/etc/settings.toml server
+  packet-verifier:
+    image: iot-all:latest
+    depends_on:
+      - db-seeder
+      - s3
+    volumes:
+      - ./settings/iot-packet-verifier.toml:/opt/iot-packet-verifier/etc/settings.toml:ro
+      - ./keypairs/test-packet-verifier-keypair.bin:/opt/iot-packet-verifier/etc/test-packet-verifier-keypair.bin:ro
+    command: /opt/iot-packet-verifier/bin/iot-packet-verifier -c /opt/iot-packet-verifier/etc/settings.toml server
+  verifier:
+    image: iot-all:latest
+    depends_on:
+      - db-seeder
+      - s3
+    volumes:
+      - ./settings/iot-verifier.toml:/opt/iot-verifier/etc/settings.toml:ro
+      - ./keypairs/test-verifier-keypair.bin:/opt/iot-verifier/etc/test-verifier-keypair.bin:ro
+    command: /opt/iot-verifier/bin/iot-verifier -c /opt/iot-verifier/etc/settings.toml server
+  reward-indexer:
+    image: iot-all:latest
+    depends_on:
+      - db-seeder
+      - s3
+    volumes:
+      - ./settings/iot-reward-index.toml:/opt/reward-index/etc/settings.toml:ro
+    command: /opt/reward-index/bin/reward-index -c /opt/reward-index/etc/settings.toml server
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      PGDATA: /data
+      POSTGRES_DBS: >
+        iot_config_db
+        iot_metadata_db
+        iot_index_db
+        iot_verifier_db
+        iot_packet_verifier_db
+    ports:
+      - "5432:5432"
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        for db in $${POSTGRES_DBS[@]}
+        do
+            cat > /docker-entrypoint-initdb.d/$${db}-setup.sql <<EOF
+            CREATE DATABASE $$db
+                WITH
+                OWNER = $$POSTGRES_USER
+                ENCODING = 'UTF8'
+                LC_COLLATE = 'en_US.utf8'
+                LC_CTYPE = 'en_US.utf8'
+                TABLESPACE = pg_default
+                CONNECTION LIMIT = -1;
+        EOF
+        done
+        docker-entrypoint.sh postgres -c log_statement=all
+    volumes:
+      - db-data:/data
+  db-seeder:
+    image: oracle-db-seeder:latest
+    environment:
+      DB_URL: postgres://postgres:postgres@postgres:5432
+      STACK: iot
+    depends_on:
+      - postgres
+  s3:
+    image: localstack/localstack:latest
+    environment:
+      SERVICES: s3
+      EAGER_SERVICE_LOADING: 1
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./localstack:/etc/localstack/init/ready.d
+
+volumes:
+  db-data:
