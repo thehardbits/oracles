@@ -106,6 +106,7 @@ impl FileInfo {
     }
 }
 
+pub const SUBSCRIBER_HOTSPOT_DATA_THRESHOLD_EVENT: &str = "subscriber_hotspot_data_threshold";
 pub const SUBSCRIBER_LOCATION_REQ: &str = "subscriber_location_req";
 pub const SUBSCRIBER_LOCATION_INGEST_REPORT: &str = "subscriber_location_report";
 pub const VERIFIED_SUBSCRIBER_LOCATION_INGEST_REPORT: &str = "verified_subscriber_location_report";
@@ -188,11 +189,13 @@ pub enum FileType {
     WifiHeartbeat,
     WifiHeartbeatIngestReport,
     BoostedHexUpdate,
+    SubscriberHotspotDataThesholdEvent,
 }
 
 impl fmt::Display for FileType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
+            Self::SubscriberHotspotDataThesholdEvent => SUBSCRIBER_HOTSPOT_DATA_THRESHOLD_EVENT,
             Self::SubscriberLocationReq => SUBSCRIBER_LOCATION_REQ,
             Self::SubscriberLocationIngestReport => SUBSCRIBER_LOCATION_INGEST_REPORT,
             Self::VerifiedSubscriberLocationIngestReport => {
@@ -243,6 +246,7 @@ impl fmt::Display for FileType {
 impl FileType {
     pub fn to_str(&self) -> &'static str {
         match self {
+            Self::SubscriberHotspotDataThesholdEvent => SUBSCRIBER_HOTSPOT_DATA_THRESHOLD_EVENT,
             Self::SubscriberLocationReq => SUBSCRIBER_LOCATION_REQ,
             Self::SubscriberLocationIngestReport => SUBSCRIBER_LOCATION_INGEST_REPORT,
             Self::VerifiedSubscriberLocationIngestReport => {
@@ -293,6 +297,7 @@ impl FromStr for FileType {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self> {
         let result = match s {
+            SUBSCRIBER_HOTSPOT_DATA_THRESHOLD_EVENT => Self::SubscriberHotspotDataThesholdEvent,
             SUBSCRIBER_LOCATION_REQ => Self::SubscriberLocationReq,
             SUBSCRIBER_LOCATION_INGEST_REPORT => Self::SubscriberLocationIngestReport,
             VERIFIED_SUBSCRIBER_LOCATION_INGEST_REPORT => {
