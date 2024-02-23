@@ -1448,7 +1448,7 @@ checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 [[package]]
 name = "beacon"
 version = "0.1.0"
-source = "git+https://github.com/helium/proto?branch=andymck/subscriber-data-threshold#b8734e48ad7736fe6e90fcb8f8703b80c6bb2dd6"
+source = "git+https://github.com/helium/proto?branch=andymck/subscriber-data-threshold#81b9d2753db9e669beddc7735a2535e647fc5eb1"
 dependencies = [
  "base64 0.21.0",
  "byteorder",
@@ -1458,7 +1458,7 @@ dependencies = [
  "rand_chacha 0.3.0",
  "rust_decimal",
  "serde",
- "sha2 0.10.6",
+ "sha2 0.9.9",
  "thiserror",
 ]
 
@@ -3337,7 +3337,7 @@ dependencies = [
 [[package]]
 name = "helium-proto"
 version = "0.1.0"
-source = "git+https://github.com/helium/proto?branch=andymck/subscriber-data-threshold#b8734e48ad7736fe6e90fcb8f8703b80c6bb2dd6"
+source = "git+https://github.com/helium/proto?branch=andymck/subscriber-data-threshold#81b9d2753db9e669beddc7735a2535e647fc5eb1"
 dependencies = [
  "bytes",
  "prost",
@@ -8322,7 +8322,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "sha2 0.10.6",
+ "sha2 0.9.9",
  "thiserror",
  "twox-hash",
  "xorf",
