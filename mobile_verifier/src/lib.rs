@@ -4,6 +4,7 @@ pub mod coverage;
 pub mod data_session;
 pub mod geofence;
 pub mod heartbeats;
+pub mod hotspot_threshold;
 pub mod reward_shares;
 pub mod rewarder;
 mod settings;

@@ -2,6 +2,7 @@ use crate::{
     coverage::{CoverageReward, CoveredHexStream, CoveredHexes},
     data_session::{HotspotMap, ServiceProviderDataSession},
     heartbeats::{HeartbeatReward, OwnedKeyType},
+    hotspot_threshold::VerifiedHotspotThresholds,
     speedtests_average::{SpeedtestAverage, SpeedtestAverages},
     subscriber_location::SubscriberValidatedLocations,
 };
@@ -419,24 +420,28 @@ impl HotspotPoints {
     pub fn add_coverage_entry(
         &mut self,
         radio_key: OwnedKeyType,
+        hotspot: PublicKeyBinary,
         points: Decimal,
         boosted_hex_info: BoostedHex,
+        verified_hotspot_thresholds: &VerifiedHotspotThresholds,
     ) {
         let rp = self
             .radio_points
             .get_mut(&radio_key.clone().into_cbsd_id())
             .unwrap();
-        // as per hip93, if radio is wifi & the location trust score multiplier is less than 1,
-        // then no boost points for you mister
-        let final_boost_info =
-            if radio_key.is_wifi() && rp.location_trust_score_multiplier < dec!(1) {
-                BoostedHex {
-                    location: boosted_hex_info.location,
-                    multiplier: 1,
-                }
-            } else {
-                boosted_hex_info
-            };
+        // need to consider requirements from hip93 & hip84 before applying any boost
+        // hip93: if radio is wifi & location_trust score multiplier < 1, no boosting
+        // hip84: if hotspot has not met minimum data and subscriber thresholds, no boosting
+        let final_boost_info = match (
+            radio_key.is_wifi() && rp.location_trust_score_multiplier < dec!(1),
+            verified_hotspot_thresholds.is_verified(&hotspot),
+        ) {
+            (true, _) | (_, false) => BoostedHex {
+                location: boosted_hex_info.location,
+                multiplier: 1,
+            },
+            _ => boosted_hex_info,
+        };
         rp.points += points * Decimal::from(final_boost_info.multiplier);
         rp.boosted_hexes.push(final_boost_info);
     }
@@ -472,6 +477,7 @@ impl CoveragePoints {
         heartbeats: impl Stream<Item = Result<HeartbeatReward, sqlx::Error>>,
         speedtests: &SpeedtestAverages,
         boosted_hexes: &BoostedHexes,
+        verified_hotspot_thresholds: &VerifiedHotspotThresholds,
         reward_period: &Range<DateTime<Utc>>,
     ) -> Result<Self, sqlx::Error> {
         let mut heartbeats = std::pin::pin!(heartbeats);
@@ -517,7 +523,13 @@ impl CoveragePoints {
             coverage_points
                 .get_mut(&hotspot)
                 .unwrap()
-                .add_coverage_entry(radio_key, points, boosted_hex_info)
+                .add_coverage_entry(
+                    radio_key,
+                    hotspot,
+                    points,
+                    boosted_hex_info,
+                    verified_hotspot_thresholds,
+                )
         }
         Ok(Self { coverage_points })
     }
@@ -1359,6 +1371,7 @@ mod test {
             stream::iter(heartbeat_rewards),
             &speedtest_avgs,
             &BoostedHexes::default(),
+            &VerifiedHotspotThresholds::default(),
             &epoch,
         )
         .await
@@ -1530,6 +1543,7 @@ mod test {
             stream::iter(heartbeat_rewards),
             &speedtest_avgs,
             &BoostedHexes::default(),
+            &VerifiedHotspotThresholds::default(),
             &epoch,
         )
         .await
@@ -1661,6 +1675,7 @@ mod test {
             stream::iter(heartbeat_rewards),
             &speedtest_avgs,
             &BoostedHexes::default(),
+            &VerifiedHotspotThresholds::default(),
             &epoch,
         )
         .await
@@ -1790,6 +1805,7 @@ mod test {
             stream::iter(heartbeat_rewards),
             &speedtest_avgs,
             &BoostedHexes::default(),
+            &VerifiedHotspotThresholds::default(),
             &epoch,
         )
         .await

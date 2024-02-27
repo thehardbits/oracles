@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Duration, Utc};
 use file_store::{
     coverage::{CoverageObject as FSCoverageObject, KeyType, RadioHexSignalLevel},
+    mobile_hotspot_threshold::HotspotThresholdReport,
     speedtest::CellSpeedtest,
 };
 use futures_util::{stream, StreamExt as FuturesStreamExt};
@@ -20,7 +21,7 @@ use mobile_verifier::{
     cell_type::CellType,
     coverage::CoverageObject,
     heartbeats::{HbType, Heartbeat, ValidatedHeartbeat},
-    reward_shares, rewarder, speedtests,
+    hotspot_threshold, reward_shares, rewarder, speedtests,
 };
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
@@ -73,6 +74,7 @@ async fn test_poc_with_boosted_hexes(pool: PgPool) -> anyhow::Result<()> {
     // seed HBs where we have a coverage reports for a singluar hex location per radio
     seed_heartbeats_v1(epoch.start, &mut txn).await?;
     seed_speedtests(epoch.end, &mut txn).await?;
+    seed_hotspot_thresholds(epoch.start, &mut txn).await?;
     txn.commit().await?;
 
     // setup boosted hex where reward start time is in the second period length
@@ -224,6 +226,7 @@ async fn test_poc_with_multi_coverage_boosted_hexes(pool: PgPool) -> anyhow::Res
     // seed HBs where we have multiple coverage reports for one radio and one report for the others
     seed_heartbeats_v2(epoch.start, &mut txn).await?;
     seed_speedtests(epoch.end, &mut txn).await?;
+    seed_hotspot_thresholds(epoch.start, &mut txn).await?;
     txn.commit().await?;
 
     // setup boosted hex where reward start time is in the second period length
@@ -390,6 +393,7 @@ async fn test_expired_boosted_hex(pool: PgPool) -> anyhow::Result<()> {
     let mut txn = pool.clone().begin().await?;
     seed_heartbeats_v1(epoch.start, &mut txn).await?;
     seed_speedtests(epoch.end, &mut txn).await?;
+    seed_hotspot_thresholds(epoch.start, &mut txn).await?;
     txn.commit().await?;
 
     // setup boosted hex where reward start time is after the boost period ends
@@ -502,6 +506,7 @@ async fn test_reduced_location_score_with_boosted_hexes(pool: PgPool) -> anyhow:
     let mut txn = pool.clone().begin().await?;
     seed_heartbeats_v3(epoch.start, &mut txn).await?;
     seed_speedtests(epoch.end, &mut txn).await?;
+    seed_hotspot_thresholds(epoch.start, &mut txn).await?;
     txn.commit().await?;
 
     // setup boosted hex where reward start time is in the second period length
@@ -993,6 +998,34 @@ async fn seed_speedtests(
         speedtests::save_speedtest(&hotspot2_speedtest, txn).await?;
         speedtests::save_speedtest(&hotspot3_speedtest, txn).await?;
     }
+    Ok(())
+}
+
+async fn seed_hotspot_thresholds(
+    ts: DateTime<Utc>,
+    txn: &mut Transaction<'_, Postgres>,
+) -> anyhow::Result<()> {
+    let report1 = HotspotThresholdReport {
+        hotspot_pubkey: HOTSPOT_1.parse().unwrap(),
+        bytes_threshold: 1000000,
+        subscriber_threshold: 3,
+        timestamp: ts,
+    };
+    let report2 = HotspotThresholdReport {
+        hotspot_pubkey: HOTSPOT_2.parse().unwrap(),
+        bytes_threshold: 1000000,
+        subscriber_threshold: 3,
+        timestamp: ts,
+    };
+    let report3 = HotspotThresholdReport {
+        hotspot_pubkey: HOTSPOT_3.parse().unwrap(),
+        bytes_threshold: 1000000,
+        subscriber_threshold: 3,
+        timestamp: ts,
+    };
+    hotspot_threshold::save(&report1, txn).await?;
+    hotspot_threshold::save(&report2, txn).await?;
+    hotspot_threshold::save(&report3, txn).await?;
     Ok(())
 }
 

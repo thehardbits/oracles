@@ -12,6 +12,7 @@ use helium_proto::services::{
     poc_mobile::{CoverageObjectValidity, SignalLevel},
 };
 use mobile_config::boosted_hex_info::{BoostedHexInfo, BoostedHexes};
+use mobile_verifier::hotspot_threshold::VerifiedHotspotThresholds;
 use mobile_verifier::{
     coverage::{CoverageClaimTimeCache, CoverageObject, CoverageObjectCache, Seniority},
     geofence::GeofenceValidator,
@@ -484,6 +485,7 @@ async fn scenario_one(pool: PgPool) -> anyhow::Result<()> {
         heartbeats,
         &speedtest_avgs,
         &BoostedHexes::default(),
+        &VerifiedHotspotThresholds::default(),
         &reward_period,
     )
     .await?;
@@ -583,6 +585,7 @@ async fn scenario_two(pool: PgPool) -> anyhow::Result<()> {
         heartbeats,
         &speedtest_avgs,
         &BoostedHexes::default(),
+        &VerifiedHotspotThresholds::default(),
         &reward_period,
     )
     .await?;
@@ -865,6 +868,7 @@ async fn scenario_three(pool: PgPool) -> anyhow::Result<()> {
         heartbeats,
         &speedtest_avgs,
         &boosted_hexes,
+        &VerifiedHotspotThresholds::default(),
         &reward_period,
     )
     .await?;
@@ -936,6 +940,7 @@ async fn scenario_four(pool: PgPool) -> anyhow::Result<()> {
         heartbeats,
         &speedtest_avgs,
         &BoostedHexes::default(),
+        &VerifiedHotspotThresholds::default(),
         &reward_period,
     )
     .await?;
@@ -1034,6 +1039,7 @@ async fn scenario_five(pool: PgPool) -> anyhow::Result<()> {
         heartbeats,
         &speedtest_avgs,
         &BoostedHexes::default(),
+        &VerifiedHotspotThresholds::default(),
         &reward_period,
     )
     .await?;
@@ -1280,6 +1286,7 @@ async fn scenario_six(pool: PgPool) -> anyhow::Result<()> {
         heartbeats,
         &speedtest_avgs,
         &BoostedHexes::default(),
+        &VerifiedHotspotThresholds::default(),
         &reward_period,
     )
     .await?;

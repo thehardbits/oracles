@@ -1,15 +1,16 @@
 use crate::{
     coverage::CoverageDaemon, data_session::DataSessionIngestor, geofence::Geofence,
     heartbeats::cbrs::HeartbeatDaemon as CellHeartbeatDaemon,
-    heartbeats::wifi::HeartbeatDaemon as WifiHeartbeatDaemon, rewarder::Rewarder,
-    speedtests::SpeedtestDaemon, subscriber_location::SubscriberLocationIngestor, telemetry,
-    Settings,
+    heartbeats::wifi::HeartbeatDaemon as WifiHeartbeatDaemon,
+    hotspot_threshold::HotspotThresholdIngestor, rewarder::Rewarder, speedtests::SpeedtestDaemon,
+    subscriber_location::SubscriberLocationIngestor, telemetry, Settings,
 };
 use anyhow::Result;
 use chrono::Duration;
 use file_store::{
     coverage::CoverageObjectIngestReport, file_info_poller::LookbackBehavior, file_sink,
     file_source, file_upload, heartbeat::CbrsHeartbeatIngestReport,
+    mobile_hotspot_threshold::HotspotThresholdReport,
     mobile_subscriber::SubscriberLocationIngestReport, mobile_transfer::ValidDataTransferSession,
     speedtest::CellSpeedtestIngestReport, wifi_heartbeat::WifiHeartbeatIngestReport, FileStore,
     FileType,
@@ -260,6 +261,19 @@ impl Cmd {
             verified_subscriber_location,
         );
 
+        // hotspot threshold reports
+        let (hotspot_threshold, hotspot_threshold_server) =
+            file_source::continuous_source::<HotspotThresholdReport, _>()
+                .state(pool.clone())
+                .store(report_ingest.clone())
+                .lookback(LookbackBehavior::StartAfter(settings.start_after()))
+                .prefix(FileType::HotspotThesholdReport.to_string())
+                .create()
+                .await?;
+
+        let hotspot_threshold_ingestor =
+            HotspotThresholdIngestor::new(pool.clone(), hotspot_threshold);
+
         // data transfers
         let (data_session_ingest, data_session_ingest_server) =
             file_source::continuous_source::<ValidDataTransferSession, _>()
@@ -285,6 +299,7 @@ impl Cmd {
             .add_task(reward_manifests_server)
             .add_task(verified_subscriber_location_server)
             .add_task(subscriber_location_ingestor)
+            .add_task(hotspot_threshold_ingestor)
             .add_task(data_session_ingest_server)
             .add_task(price_daemon)
             .add_task(cbrs_heartbeat_daemon)
@@ -295,6 +310,7 @@ impl Cmd {
             .add_task(coverage_daemon)
             .add_task(rewarder)
             .add_task(subscriber_location_ingest_server)
+            .add_task(hotspot_threshold_server)
             .add_task(data_session_ingestor)
             .start()
             .await
