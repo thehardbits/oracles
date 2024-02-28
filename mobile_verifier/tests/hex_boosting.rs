@@ -214,10 +214,10 @@ async fn test_poc_with_boosted_hexes(pool: PgPool) -> anyhow::Result<()> {
 
 #[sqlx::test]
 async fn test_poc_boosted_hexes_thresholds_not_met(pool: PgPool) -> anyhow::Result<()> {
-    // this is the same test as the previous one, but with the hotspot thresholds not seeded
+    // this is the same setup as the previous one, but with the hotspot thresholds not seeded
     // this simulates the case where we have radios in boosted hexes but where the coverage
     // thresholds for the radios have not been met
-    // the end result is that no boosting takes place, the radios are awared non boost reward values
+    // the end result is that no boosting takes place, the radios are awarded non boosted reward values
     let (mobile_rewards_client, mut mobile_rewards) = common::create_file_sink();
     let (speedtest_avg_client, _speedtest_avg_server) = common::create_file_sink();
     let now = Utc::now();
@@ -318,7 +318,6 @@ async fn test_poc_boosted_hexes_thresholds_not_met(pool: PgPool) -> anyhow::Resu
             PublicKeyBinary::from(poc_rewards[2].hotspot_key.clone()).to_string()
         );
 
-        // assert the boosted hexes in the radio rewards
         // assert the number of boosted hexes for each radio
         assert_eq!(0, poc_rewards[0].boosted_hexes.len());
         assert_eq!(0, poc_rewards[1].boosted_hexes.len());
