@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Duration, Utc};
 use file_store::{
     coverage::{CoverageObject as FSCoverageObject, KeyType, RadioHexSignalLevel},
-    mobile_hotspot_threshold::HotspotThresholdReport,
+    mobile_hotspot_threshold::{HotspotThresholdIngestReport, HotspotThresholdReportReq},
     speedtest::CellSpeedtest,
 };
 use futures_util::{stream, StreamExt as FuturesStreamExt};
@@ -33,6 +33,7 @@ use uuid::Uuid;
 const HOTSPOT_1: &str = "112E7TxoNHV46M6tiPA8N1MkeMeQxc9ztb4JQLXBVAAUfq1kJLoF";
 const HOTSPOT_2: &str = "112QhnxqU8QZ3jUXpoRk51quuQVft9Pf5P5zzDDvLxj7Q9QqbMh7";
 const HOTSPOT_3: &str = "11hd7HoicRgBPjBGcqcT2Y9hRQovdZeff5eKFMbCSuDYQmuCiF1";
+const CARRIER_HOTSPOT_KEY: &str = "11hd7HoicRgBPjBGcqcT2Y9hRQovdZeff5eKFMbCSuDYQmuCiF1";
 const BOOST_HEX_PUBKEY: &str = "J9JiLTpjaShxL8eMvUs8txVw6TZ36E38SiJ89NxnMbLU";
 const BOOST_CONFIG_PUBKEY: &str = "BZM1QTud72B2cpTW7PhEnFmRX7ZWzvY7DpPpNJJuDrWG";
 
@@ -1137,23 +1138,35 @@ async fn seed_hotspot_thresholds(
     ts: DateTime<Utc>,
     txn: &mut Transaction<'_, Postgres>,
 ) -> anyhow::Result<()> {
-    let report1 = HotspotThresholdReport {
-        hotspot_pubkey: HOTSPOT_1.parse().unwrap(),
-        bytes_threshold: 1000000,
-        subscriber_threshold: 3,
-        timestamp: ts,
+    let report1 = HotspotThresholdIngestReport {
+        received_timestamp: Default::default(),
+        report: HotspotThresholdReportReq {
+            hotspot_pubkey: HOTSPOT_1.parse().unwrap(),
+            bytes_threshold: 1000000,
+            subscriber_threshold: 3,
+            threshold_timestamp: ts,
+            carrier_pub_key: CARRIER_HOTSPOT_KEY.parse().unwrap(),
+        },
     };
-    let report2 = HotspotThresholdReport {
-        hotspot_pubkey: HOTSPOT_2.parse().unwrap(),
-        bytes_threshold: 1000000,
-        subscriber_threshold: 3,
-        timestamp: ts,
+    let report2 = HotspotThresholdIngestReport {
+        received_timestamp: Default::default(),
+        report: HotspotThresholdReportReq {
+            hotspot_pubkey: HOTSPOT_2.parse().unwrap(),
+            bytes_threshold: 1000000,
+            subscriber_threshold: 3,
+            threshold_timestamp: ts,
+            carrier_pub_key: CARRIER_HOTSPOT_KEY.parse().unwrap(),
+        },
     };
-    let report3 = HotspotThresholdReport {
-        hotspot_pubkey: HOTSPOT_3.parse().unwrap(),
-        bytes_threshold: 1000000,
-        subscriber_threshold: 3,
-        timestamp: ts,
+    let report3 = HotspotThresholdIngestReport {
+        received_timestamp: Default::default(),
+        report: HotspotThresholdReportReq {
+            hotspot_pubkey: HOTSPOT_3.parse().unwrap(),
+            bytes_threshold: 1000000,
+            subscriber_threshold: 3,
+            threshold_timestamp: ts,
+            carrier_pub_key: CARRIER_HOTSPOT_KEY.parse().unwrap(),
+        },
     };
     hotspot_threshold::save(&report1, txn).await?;
     hotspot_threshold::save(&report2, txn).await?;

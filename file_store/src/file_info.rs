@@ -106,7 +106,9 @@ impl FileInfo {
     }
 }
 
-pub const HOTSPOT_THRESHOLD_REPORT: &str = "hotspot_threshold_report";
+pub const HOTSPOT_THRESHOLD_REQ: &str = "hotspot_threshold_req";
+pub const HOTSPOT_THRESHOLD_INGEST_REPORT: &str = "hotspot_threshold_ingest_report";
+pub const VERIFIED_HOTSPOT_THRESHOLD_INGEST_REPORT: &str = "verified_hotspot_threshold_report";
 pub const SUBSCRIBER_LOCATION_REQ: &str = "subscriber_location_req";
 pub const SUBSCRIBER_LOCATION_INGEST_REPORT: &str = "subscriber_location_report";
 pub const VERIFIED_SUBSCRIBER_LOCATION_INGEST_REPORT: &str = "verified_subscriber_location_report";
@@ -189,13 +191,17 @@ pub enum FileType {
     WifiHeartbeat,
     WifiHeartbeatIngestReport,
     BoostedHexUpdate,
-    HotspotThesholdReport,
+    HotspotThresholdReq,
+    HotspotThresholdIngestReport,
+    VerifiedHotspotThresholdIngestReport,
 }
 
 impl fmt::Display for FileType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Self::HotspotThesholdReport => HOTSPOT_THRESHOLD_REPORT,
+            Self::HotspotThresholdReq => HOTSPOT_THRESHOLD_REQ,
+            Self::HotspotThresholdIngestReport => HOTSPOT_THRESHOLD_INGEST_REPORT,
+            Self::VerifiedHotspotThresholdIngestReport => VERIFIED_HOTSPOT_THRESHOLD_INGEST_REPORT,
             Self::SubscriberLocationReq => SUBSCRIBER_LOCATION_REQ,
             Self::SubscriberLocationIngestReport => SUBSCRIBER_LOCATION_INGEST_REPORT,
             Self::VerifiedSubscriberLocationIngestReport => {
@@ -246,7 +252,9 @@ impl fmt::Display for FileType {
 impl FileType {
     pub fn to_str(&self) -> &'static str {
         match self {
-            Self::HotspotThesholdReport => HOTSPOT_THRESHOLD_REPORT,
+            Self::HotspotThresholdReq => HOTSPOT_THRESHOLD_REQ,
+            Self::HotspotThresholdIngestReport => HOTSPOT_THRESHOLD_INGEST_REPORT,
+            Self::VerifiedHotspotThresholdIngestReport => VERIFIED_HOTSPOT_THRESHOLD_INGEST_REPORT,
             Self::SubscriberLocationReq => SUBSCRIBER_LOCATION_REQ,
             Self::SubscriberLocationIngestReport => SUBSCRIBER_LOCATION_INGEST_REPORT,
             Self::VerifiedSubscriberLocationIngestReport => {
@@ -297,7 +305,9 @@ impl FromStr for FileType {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self> {
         let result = match s {
-            HOTSPOT_THRESHOLD_REPORT => Self::HotspotThesholdReport,
+            HOTSPOT_THRESHOLD_REQ => Self::HotspotThresholdReq,
+            HOTSPOT_THRESHOLD_INGEST_REPORT => Self::HotspotThresholdIngestReport,
+            VERIFIED_HOTSPOT_THRESHOLD_INGEST_REPORT => Self::VerifiedHotspotThresholdIngestReport,
             SUBSCRIBER_LOCATION_REQ => Self::SubscriberLocationReq,
             SUBSCRIBER_LOCATION_INGEST_REPORT => Self::SubscriberLocationIngestReport,
             VERIFIED_SUBSCRIBER_LOCATION_INGEST_REPORT => {

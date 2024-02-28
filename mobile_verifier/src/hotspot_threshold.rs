@@ -1,21 +1,36 @@
 use chrono::{DateTime, Utc};
+use file_store::file_info_poller::FileInfoStream;
 use file_store::{
-    file_info_poller::FileInfoStream, mobile_hotspot_threshold::HotspotThresholdReport,
+    file_sink::FileSinkClient,
+    mobile_hotspot_threshold::{
+        HotspotThresholdIngestReport, HotspotThresholdReportReq,
+        VerifiedHotspotThresholdIngestReport,
+    },
 };
 use futures::{StreamExt, TryStreamExt};
 use futures_util::TryFutureExt;
 use helium_crypto::PublicKeyBinary;
+use helium_proto::services::poc_mobile::VerifiedHotspotThresholdIngestReportV1;
+use helium_proto::services::{
+    mobile_config::NetworkKeyRole, poc_mobile::HotspotThresholdReportVerificationStatus,
+};
+use mobile_config::client::authorization_client::AuthorizationVerifier;
 use sqlx::{postgres::PgRow, FromRow, PgPool, Postgres, Row, Transaction};
 use std::{collections::HashMap, ops::Range};
 use task_manager::ManagedTask;
 use tokio::sync::mpsc::Receiver;
 
-pub struct HotspotThresholdIngestor {
+pub struct HotspotThresholdIngestor<AV> {
     pool: PgPool,
-    reports_receiver: Receiver<FileInfoStream<HotspotThresholdReport>>,
+    reports_receiver: Receiver<FileInfoStream<HotspotThresholdIngestReport>>,
+    verified_report_sink: FileSinkClient,
+    authorization_verifier: AV,
 }
 
-impl ManagedTask for HotspotThresholdIngestor {
+impl<AV> ManagedTask for HotspotThresholdIngestor<AV>
+where
+    AV: AuthorizationVerifier + Send + Sync + 'static,
+{
     fn start_task(
         self: Box<Self>,
         shutdown: triggered::Listener,
@@ -29,14 +44,21 @@ impl ManagedTask for HotspotThresholdIngestor {
     }
 }
 
-impl HotspotThresholdIngestor {
+impl<AV> HotspotThresholdIngestor<AV>
+where
+    AV: AuthorizationVerifier,
+{
     pub fn new(
         pool: sqlx::Pool<Postgres>,
-        reports_receiver: Receiver<FileInfoStream<HotspotThresholdReport>>,
+        reports_receiver: Receiver<FileInfoStream<HotspotThresholdIngestReport>>,
+        verified_report_sink: FileSinkClient,
+        authorization_verifier: AV,
     ) -> Self {
         Self {
             pool,
             reports_receiver,
+            verified_report_sink,
+            authorization_verifier,
         }
     }
 
@@ -57,7 +79,7 @@ impl HotspotThresholdIngestor {
 
     async fn process_file(
         &self,
-        file_info_stream: FileInfoStream<HotspotThresholdReport>,
+        file_info_stream: FileInfoStream<HotspotThresholdIngestReport>,
     ) -> anyhow::Result<()> {
         let mut transaction = self.pool.begin().await?;
         file_info_stream
@@ -65,7 +87,31 @@ impl HotspotThresholdIngestor {
             .await?
             .map(anyhow::Ok)
             .try_fold(transaction, |mut transaction, ingest_report| async move {
-                save(&ingest_report, &mut transaction).await?;
+                // verifiy the report
+                let verified_report_status = self.verify_report(&ingest_report.report).await;
+
+                // if the report is valid then save to the db
+                // and thus available to the rewarder
+                if verified_report_status
+                    == HotspotThresholdReportVerificationStatus::ThresholdReportStatusValid
+                {
+                    save(&ingest_report, &mut transaction).await?;
+                }
+
+                // write out paper trail of verified report, valid or invalid
+                let verified_report_proto: VerifiedHotspotThresholdIngestReportV1 =
+                    VerifiedHotspotThresholdIngestReport {
+                        report: ingest_report,
+                        status: verified_report_status,
+                        timestamp: Utc::now(),
+                    }
+                    .into();
+                self.verified_report_sink
+                    .write(
+                        verified_report_proto,
+                        &[("report_status", verified_report_status.as_str_name())],
+                    )
+                    .await?;
                 Ok(transaction)
             })
             .await?
@@ -73,10 +119,31 @@ impl HotspotThresholdIngestor {
             .await?;
         Ok(())
     }
+
+    async fn verify_report(
+        &self,
+        report: &HotspotThresholdReportReq,
+    ) -> HotspotThresholdReportVerificationStatus {
+        if !self.verify_known_carrier_key(&report.carrier_pub_key).await {
+            return HotspotThresholdReportVerificationStatus::ThresholdReportStatusInvalidCarrierKey;
+        };
+        HotspotThresholdReportVerificationStatus::ThresholdReportStatusValid
+    }
+
+    async fn verify_known_carrier_key(&self, public_key: &PublicKeyBinary) -> bool {
+        match self
+            .authorization_verifier
+            .verify_authorized_key(public_key, NetworkKeyRole::MobileCarrier)
+            .await
+        {
+            Ok(res) => res,
+            Err(_err) => false,
+        }
+    }
 }
 
 pub async fn save(
-    report: &HotspotThresholdReport,
+    ingest_report: &HotspotThresholdIngestReport,
     db: &mut Transaction<'_, Postgres>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
@@ -90,10 +157,10 @@ pub async fn save(
             updated_at = now()
             "#,
     )
-    .bind(report.hotspot_pubkey.to_string())
-    .bind(report.bytes_threshold as i64)
-    .bind(report.subscriber_threshold as i32)
-    .bind(report.timestamp)
+    .bind(ingest_report.report.hotspot_pubkey.to_string())
+    .bind(ingest_report.report.bytes_threshold as i64)
+    .bind(ingest_report.report.subscriber_threshold as i32)
+    .bind(ingest_report.report.threshold_timestamp)
     .execute(&mut *db)
     .await?;
     Ok(())

@@ -10,7 +10,7 @@ use chrono::Duration;
 use file_store::{
     coverage::CoverageObjectIngestReport, file_info_poller::LookbackBehavior, file_sink,
     file_source, file_upload, heartbeat::CbrsHeartbeatIngestReport,
-    mobile_hotspot_threshold::HotspotThresholdReport,
+    mobile_hotspot_threshold::HotspotThresholdIngestReport,
     mobile_subscriber::SubscriberLocationIngestReport, mobile_transfer::ValidDataTransferSession,
     speedtest::CellSpeedtestIngestReport, wifi_heartbeat::WifiHeartbeatIngestReport, FileStore,
     FileType,
@@ -262,17 +262,32 @@ impl Cmd {
         );
 
         // hotspot threshold reports
-        let (hotspot_threshold, hotspot_threshold_server) =
-            file_source::continuous_source::<HotspotThresholdReport, _>()
+        let (hotspot_threshold_ingest, hotspot_threshold_ingest_server) =
+            file_source::continuous_source::<HotspotThresholdIngestReport, _>()
                 .state(pool.clone())
                 .store(report_ingest.clone())
                 .lookback(LookbackBehavior::StartAfter(settings.start_after()))
-                .prefix(FileType::HotspotThesholdReport.to_string())
+                .prefix(FileType::HotspotThresholdIngestReport.to_string())
                 .create()
                 .await?;
 
-        let hotspot_threshold_ingestor =
-            HotspotThresholdIngestor::new(pool.clone(), hotspot_threshold);
+        let (verified_hotspot_threshold, verified_hotspot_threshold_server) =
+            file_sink::FileSinkBuilder::new(
+                FileType::VerifiedHotspotThresholdIngestReport,
+                store_base_path,
+                concat!(env!("CARGO_PKG_NAME"), "_verified_hotspot_threshold"),
+            )
+            .file_upload(Some(file_upload.clone()))
+            .auto_commit(false)
+            .create()
+            .await?;
+
+        let hotspot_threshold_ingestor = HotspotThresholdIngestor::new(
+            pool.clone(),
+            hotspot_threshold_ingest,
+            verified_hotspot_threshold,
+            auth_client.clone(),
+        );
 
         // data transfers
         let (data_session_ingest, data_session_ingest_server) =
@@ -300,6 +315,7 @@ impl Cmd {
             .add_task(verified_subscriber_location_server)
             .add_task(subscriber_location_ingestor)
             .add_task(hotspot_threshold_ingestor)
+            .add_task(verified_hotspot_threshold_server)
             .add_task(data_session_ingest_server)
             .add_task(price_daemon)
             .add_task(cbrs_heartbeat_daemon)
@@ -310,7 +326,7 @@ impl Cmd {
             .add_task(coverage_daemon)
             .add_task(rewarder)
             .add_task(subscriber_location_ingest_server)
-            .add_task(hotspot_threshold_server)
+            .add_task(hotspot_threshold_ingest_server)
             .add_task(data_session_ingestor)
             .start()
             .await

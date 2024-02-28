@@ -14,6 +14,7 @@ use helium_proto::services::poc_mobile::{
     self, CellHeartbeatIngestReportV1, CellHeartbeatReqV1, CellHeartbeatRespV1,
     CoverageObjectIngestReportV1, CoverageObjectReqV1, CoverageObjectRespV1,
     DataTransferSessionIngestReportV1, DataTransferSessionReqV1, DataTransferSessionRespV1,
+    HotspotThresholdIngestReportV1, HotspotThresholdReportReqV1, HotspotThresholdReportRespV1,
     SpeedtestIngestReportV1, SpeedtestReqV1, SpeedtestRespV1, SubscriberLocationIngestReportV1,
     SubscriberLocationReqV1, SubscriberLocationRespV1, WifiHeartbeatIngestReportV1,
     WifiHeartbeatReqV1, WifiHeartbeatRespV1,
@@ -36,6 +37,7 @@ pub struct GrpcServer {
     speedtest_report_sink: FileSinkClient,
     data_transfer_session_sink: FileSinkClient,
     subscriber_location_report_sink: FileSinkClient,
+    hotspot_threshold_report_sink: FileSinkClient,
     coverage_object_report_sink: FileSinkClient,
     required_network: Network,
     address: SocketAddr,
@@ -214,6 +216,39 @@ impl poc_mobile::PocMobile for GrpcServer {
         }))
     }
 
+    async fn submit_hotspot_threshold(
+        &self,
+        request: Request<HotspotThresholdReportReqV1>,
+    ) -> GrpcResult<HotspotThresholdReportRespV1> {
+        let timestamp = Utc::now().timestamp_millis() as u64;
+        let event = request.into_inner();
+        let hotspot_pubkey = event.hotspot_pubkey.clone();
+        let threshold_timestamp = event.threshold_timestamp;
+
+        let report = self
+            .verify_public_key(event.carrier_pub_key.as_ref())
+            .and_then(|public_key| self.verify_network(public_key))
+            .and_then(|public_key| self.verify_signature(public_key, event))
+            .map(|(_, event)| HotspotThresholdIngestReportV1 {
+                received_timestamp: timestamp,
+                report: Some(event),
+            })
+            .map_err(|status| {
+                tracing::debug!(
+                    hotspot_pubkey = ?hotspot_pubkey,
+                    threshold_timestamp = %threshold_timestamp,
+                    status = %status
+                );
+                status
+            })?;
+
+        _ = self.hotspot_threshold_report_sink.write(report, []).await;
+
+        Ok(Response::new(HotspotThresholdReportRespV1 {
+            id: timestamp.to_string(),
+        }))
+    }
+
     async fn submit_coverage_object(
         &self,
         request: Request<CoverageObjectReqV1>,
@@ -303,6 +338,17 @@ pub async fn grpc_server(settings: &Settings) -> Result<()> {
         .create()
         .await?;
 
+    let (hotspot_threshold_report_sink, hotspot_threshold_report_sink_server) =
+        file_sink::FileSinkBuilder::new(
+            FileType::HotspotThresholdIngestReport,
+            store_base_path,
+            concat!(env!("CARGO_PKG_NAME"), "_hotspot_threshold_ingest_report"),
+        )
+        .file_upload(Some(file_upload.clone()))
+        .roll_time(Duration::minutes(INGEST_WAIT_DURATION_MINUTES))
+        .create()
+        .await?;
+
     let (coverage_object_report_sink, coverage_object_report_sink_server) =
         file_sink::FileSinkBuilder::new(
             FileType::CoverageObjectIngestReport,
@@ -328,6 +374,7 @@ pub async fn grpc_server(settings: &Settings) -> Result<()> {
         speedtest_report_sink,
         data_transfer_session_sink,
         subscriber_location_report_sink,
+        hotspot_threshold_report_sink,
         coverage_object_report_sink,
         required_network: settings.network,
         address: grpc_addr,
@@ -346,6 +393,7 @@ pub async fn grpc_server(settings: &Settings) -> Result<()> {
         .add_task(speedtest_report_sink_server)
         .add_task(data_transfer_session_sink_server)
         .add_task(subscriber_location_report_sink_server)
+        .add_task(hotspot_threshold_report_sink_server)
         .add_task(coverage_object_report_sink_server)
         .add_task(grpc_server)
         .start()
