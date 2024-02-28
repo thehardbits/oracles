@@ -5,9 +5,9 @@ use crate::{
 use chrono::{DateTime, Utc};
 use helium_crypto::PublicKeyBinary;
 use helium_proto::HotspotThresholdReportV1;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct HotspotThresholdReport {
     pub hotspot_pubkey: PublicKeyBinary,
     pub bytes_threshold: u64,
