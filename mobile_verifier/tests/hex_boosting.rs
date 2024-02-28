@@ -213,6 +213,139 @@ async fn test_poc_with_boosted_hexes(pool: PgPool) -> anyhow::Result<()> {
 }
 
 #[sqlx::test]
+async fn test_poc_boosted_hexes_thresholds_not_met(pool: PgPool) -> anyhow::Result<()> {
+    // this is the same test as the previous one, but with the hotspot thresholds not seeded
+    // this simulates the case where we have radios in boosted hexes but where the coverage
+    // thresholds for the radios have not been met
+    // the end result is that no boosting takes place, the radios are awared non boost reward values
+    let (mobile_rewards_client, mut mobile_rewards) = common::create_file_sink();
+    let (speedtest_avg_client, _speedtest_avg_server) = common::create_file_sink();
+    let now = Utc::now();
+    let epoch = (now - ChronoDuration::hours(24))..now;
+    let boost_period_length = Duration::days(30);
+
+    // seed all the things
+    let mut txn = pool.clone().begin().await?;
+    // seed HBs where we have a coverage reports for a singluar hex location per radio
+    seed_heartbeats_v1(epoch.start, &mut txn).await?;
+    seed_speedtests(epoch.end, &mut txn).await?;
+    txn.commit().await?;
+
+    // setup boosted hex where reward start time is in the second period length
+    let multipliers1 = vec![2, 10, 15, 35];
+    let start_ts_1 = epoch.start - boost_period_length;
+    let end_ts_1 = start_ts_1 + (boost_period_length * multipliers1.len() as i32);
+
+    // setup boosted hex where reward start time is in the third & last period length
+    let multipliers2 = vec![3, 10, 20];
+    let start_ts_2 = epoch.start - (boost_period_length * 2);
+    let end_ts_2 = start_ts_2 + (boost_period_length * multipliers2.len() as i32);
+
+    // setup boosted hex where no start or end time is set
+    // will default to the first multiplier
+    // first multiplier is 1x for easy math when comparing relative rewards
+    let multipliers3 = vec![1, 10, 20];
+
+    let boosted_hexes = vec![
+        BoostedHexInfo {
+            // hotspot 1's location
+            location: 0x8a1fb466d2dffff_u64,
+            start_ts: Some(start_ts_1),
+            end_ts: Some(end_ts_1),
+            period_length: boost_period_length,
+            multipliers: multipliers1,
+            boosted_hex_pubkey: Pubkey::from_str(BOOST_HEX_PUBKEY).unwrap(),
+            boost_config_pubkey: Pubkey::from_str(BOOST_CONFIG_PUBKEY).unwrap(),
+            version: 0,
+        },
+        BoostedHexInfo {
+            // hotspot 2's location
+            location: 0x8a1fb49642dffff_u64,
+            start_ts: Some(start_ts_2),
+            end_ts: Some(end_ts_2),
+            period_length: boost_period_length,
+            multipliers: multipliers2,
+            boosted_hex_pubkey: Pubkey::from_str(BOOST_HEX_PUBKEY).unwrap(),
+            boost_config_pubkey: Pubkey::from_str(BOOST_CONFIG_PUBKEY).unwrap(),
+            version: 0,
+        },
+        BoostedHexInfo {
+            // hotspot 3's location
+            location: 0x8c2681a306607ff_u64,
+            start_ts: None,
+            end_ts: None,
+            period_length: boost_period_length,
+            multipliers: multipliers3,
+            boosted_hex_pubkey: Pubkey::from_str(BOOST_HEX_PUBKEY).unwrap(),
+            boost_config_pubkey: Pubkey::from_str(BOOST_CONFIG_PUBKEY).unwrap(),
+            version: 0,
+        },
+    ];
+
+    let hex_boosting_client = MockHexBoostingClient::new(boosted_hexes);
+
+    let (_, rewards) = tokio::join!(
+        // run rewards for poc and dc
+        rewarder::reward_poc_and_dc(
+            &pool,
+            &hex_boosting_client,
+            &mobile_rewards_client,
+            &speedtest_avg_client,
+            &epoch,
+            dec!(0.0001)
+        ),
+        receive_expected_rewards(&mut mobile_rewards)
+    );
+    if let Ok((poc_rewards, unallocated_reward)) = rewards {
+        // assert poc reward outputs
+        let exp_reward_1 = 16393442622950;
+        let exp_reward_2 = 16393442622950;
+        let exp_reward_3 = 16393442622950;
+
+        assert_eq!(exp_reward_1, poc_rewards[0].poc_reward);
+        assert_eq!(
+            HOTSPOT_2.to_string(),
+            PublicKeyBinary::from(poc_rewards[0].hotspot_key.clone()).to_string()
+        );
+        assert_eq!(exp_reward_2, poc_rewards[1].poc_reward);
+        assert_eq!(
+            HOTSPOT_1.to_string(),
+            PublicKeyBinary::from(poc_rewards[1].hotspot_key.clone()).to_string()
+        );
+        assert_eq!(exp_reward_3, poc_rewards[2].poc_reward);
+        assert_eq!(
+            HOTSPOT_3.to_string(),
+            PublicKeyBinary::from(poc_rewards[2].hotspot_key.clone()).to_string()
+        );
+
+        // assert the boosted hexes in the radio rewards
+        // assert the number of boosted hexes for each radio
+        assert_eq!(0, poc_rewards[0].boosted_hexes.len());
+        assert_eq!(0, poc_rewards[1].boosted_hexes.len());
+        assert_eq!(0, poc_rewards[2].boosted_hexes.len());
+
+        // confirm the total rewards allocated matches expectations
+        let poc_sum: u64 = poc_rewards.iter().map(|r| r.poc_reward).sum();
+        let unallocated_sum: u64 = unallocated_reward.amount;
+        let total = poc_sum + unallocated_sum;
+
+        let expected_sum = reward_shares::get_scheduled_tokens_for_poc(epoch.end - epoch.start)
+            .to_u64()
+            .unwrap();
+        assert_eq!(expected_sum, total);
+
+        // confirm the rewarded percentage amount matches expectations
+        let daily_total = reward_shares::get_total_scheduled_tokens(epoch.end - epoch.start);
+        let percent = (Decimal::from(total) / daily_total)
+            .round_dp_with_strategy(2, RoundingStrategy::MidpointNearestEven);
+        assert_eq!(percent, dec!(0.6));
+    } else {
+        panic!("no rewards received");
+    };
+    Ok(())
+}
+
+#[sqlx::test]
 async fn test_poc_with_multi_coverage_boosted_hexes(pool: PgPool) -> anyhow::Result<()> {
     let (mobile_rewards_client, mut mobile_rewards) = common::create_file_sink();
     let (speedtest_avg_client, _speedtest_avg_server) = common::create_file_sink();
