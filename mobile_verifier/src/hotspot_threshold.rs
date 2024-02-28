@@ -5,7 +5,6 @@ use file_store::{
 use futures::{StreamExt, TryStreamExt};
 use futures_util::TryFutureExt;
 use helium_crypto::PublicKeyBinary;
-use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgRow, FromRow, PgPool, Postgres, Row, Transaction};
 use std::{collections::HashMap, ops::Range};
 use task_manager::ManagedTask;
@@ -116,7 +115,7 @@ impl FromRow<'_, PgRow> for HotspotThreshold {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct VerifiedHotspotThresholds {
     gateways: HashMap<PublicKeyBinary, (u64, u32)>,
 }
